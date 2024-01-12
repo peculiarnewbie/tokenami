@@ -14,6 +14,7 @@ import pkgJson from './../package.json';
 import { require } from './utils/require';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
+type GenerateSheetParams = Parameters<typeof sheet.generate>[0];
 
 const questions = [
   {
@@ -133,8 +134,6 @@ function getBrowsersList(config: any) {
 /* -------------------------------------------------------------------------------------------------
  * generateStyles
  * -----------------------------------------------------------------------------------------------*/
-
-type GenerateSheetParams = Parameters<typeof sheet.generate>[0];
 
 function generateStyles(
   params: Omit<GenerateSheetParams, 'output'> & { cwd: string; out: string }

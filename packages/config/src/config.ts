@@ -202,6 +202,26 @@ function getTokenValueParts(tokenValue: TokenValue) {
   return { property, themeKey, token };
 }
 
+/* -------------------------------------------------------------------------------------------------
+ * generateClassName
+ * -----------------------------------------------------------------------------------------------*/
+
+function generateClassName(entries: [TokenProperty, string][]) {
+  entries = entries.map(([property, value]) => [property, String(value)]);
+  entries = entries.sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
+  const str = JSON.stringify(entries);
+  let hash = 0;
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = hash * 31 + char;
+    hash = hash & hash;
+  }
+
+  const hashStr = Math.abs(hash).toString(16);
+  return `tk${hashStr}`;
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 
 export type { Config, Theme, Aliases };
@@ -222,4 +242,5 @@ export {
   getTokenPropertyParts,
   getTokenValueParts,
   createConfig,
+  generateClassName,
 };

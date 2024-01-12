@@ -2,6 +2,7 @@ import * as Tokenami from '@tokenami/config';
 import type { TokenamiProperties, TokenamiFinalConfig } from '@tokenami/dev';
 
 const _LONGHANDS = Symbol();
+const _COMPOSE = Symbol();
 
 /* -------------------------------------------------------------------------------------------------
  * css
@@ -12,7 +13,8 @@ type VariantValue<T> = T extends 'true' | 'false' ? boolean : T;
 type ReponsiveKey = Extract<keyof TokenamiFinalConfig['responsive'], string>;
 type ResponsiveValue<T> = T extends string ? `${ReponsiveKey}_${T}` : never;
 
-type Override = TokenamiProperties | false | undefined;
+type TokenamiStyle = TokenamiProperties & { [_COMPOSE]?: TokenamiProperties };
+type Override = TokenamiStyle | false | undefined;
 type Variants<C> = { [V in keyof C]?: VariantValue<keyof C[V]> };
 type ResponsiveVariants<C> = {
   [V in keyof C]: { [M in ResponsiveValue<V>]?: VariantValue<keyof C[V]> };
@@ -81,8 +83,6 @@ css[_LONGHANDS] = Tokenami.mapShorthandToLonghands;
  * -----------------------------------------------------------------------------------------------*/
 
 css.compose = (baseStyles, variantsConfig, options) => {
-  const cache: Record<string, TokenamiProperties> = {};
-
   return function generate(variants, ...overrides) {
     const cacheId = JSON.stringify({ baseStyles, variants, overrides });
     const cached = cache[cacheId];
@@ -132,7 +132,7 @@ function override(style: Record<string, any>, property: string) {
   }
 }
 
-function convertToMediaStyles(bp: string, styles: TokenamiProperties): TokenamiProperties {
+function convertToMediaStyles(bp: string, styles: TokenamiStyle): TokenamiStyle {
   const updatedEntries = Object.entries(styles).map(([property, value]) => {
     const tokenPrefix = Tokenami.tokenProperty('');
     const bpPrefix = Tokenami.variantProperty(bp, '');

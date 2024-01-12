@@ -5,6 +5,8 @@ import { css } from '~/css';
 export const links: LinksFunction = () => [{ rel: 'stylesheet', href: styles }];
 
 export default function Index() {
+  const quoteImage = styles.quoteImage({ variant: 'circle', md_variant: 'fill' });
+  const button = styles.button();
   return (
     <div
       style={css({
@@ -22,24 +24,10 @@ export default function Index() {
         '--justify-content': 'center',
       })}
     >
-      <figure
-        style={css({
-          '--bg-color': 'var(--color_slate-100)',
-          '--border-radius': 'var(--radii_rounded)',
-          '--text-align': 'center',
-          '--overflow': 'hidden',
-          '--m': 10,
-          '--px': 8,
-          '--py': 8,
-          '--md_display': 'flex',
-          '--md_p': 0,
-          '--md_text-align': 'left',
-          '--font-family': 'var(--font_sans)',
-          '--line-height': 'var(---,1.8)',
-        })}
-      >
+      <figure style={card}>
         <img
-          style={quoteImage({ variant: 'circle', md_variant: 'fill' })}
+          className={quoteImage.class()}
+          style={quoteImage.style()}
           src="/me.jpg"
           alt=""
           width="400"
@@ -72,66 +60,96 @@ export default function Index() {
         </div>
       </figure>
 
-      <button
+      <div
         style={css({
-          '--border-block-end': 'var(---, 1px solid var(--color_slate-700))',
-          '--width': 'var(---,180px)',
-          '--height': 15,
-          '--border-radius': 'var(--radii_rounded)',
-          '--border': 'var(---,none)',
-          '--font-family': 'var(--font_sans)',
-          '--font-size': 'var(---,20px)',
-          '--2xl_font-size': 'var(---, 25px)',
-          '--bg-color': 'var(--color_slate-100)',
-          '--hover_background-color': 'var(--color_slate-700)',
-          '--hover_color': 'var(---,white)',
-          '--transition': 'var(---,all 150ms)',
-          '--hover_animation': 'var(--anim_wiggle)',
-          '--focus-hover_background-color': 'var(--color_slate-700)',
-          '--md_focus-hover_background-color': 'var(--color_sky-500)',
+          '--display': 'flex',
+          '--flex-direction': 'column',
+          '--gap': 2,
+          '--align-items': 'center',
         })}
       >
-        Button
-      </button>
-
-      <button
-        style={css({
-          '--border-block-end': 'var(---, 1px solid var(--color_slate-700))',
-          '--width': 'var(---,180px)',
-          '--height': 15,
-          '--border-radius': 'var(--radii_rounded)',
-          '--border': 'var(---,none)',
-          '--font-family': 'var(--font_sans)',
-          '--font-size': 'var(---,20px)',
-          '--2xl_font-size': 'var(---, 25px)',
-          '--bg-color': 'var(--color_slate-100)',
-          '--hover_background-color': 'var(--color_slate-700)',
-          '--hover_color': 'var(---,white)',
-          '--transition': 'var(---,all 150ms)',
-          '--hover_animation': 'var(--anim_wiggle)',
-        })}
-      >
-        Button
-      </button>
+        <Button>Button</Button>
+        <Link href="#" style={button.style()} className={button.class()}>
+          Link button
+        </Link>
+      </div>
+      <div style={css(card, { '--p': 10, '--md_p': 10 })}>
+        <Link href="#">Link</Link>
+      </div>
     </div>
   );
 }
 
-const quoteImage = css.compose(
-  { '--object-fit': 'cover' },
-  {
-    variant: {
-      circle: {
-        '--width': 24,
-        '--height': 24,
-        '--border-radius': 'var(--radii_circle)',
-      },
-      fill: {
-        '--width': 'var(---,11rem)',
-        '--height': 'var(--size_auto)',
-        '--border-radius': 'var(--radii_none)',
+const Button = (props: React.ComponentProps<'button'>) => {
+  const { className, style, ...buttonProps } = props;
+  const compose = styles.button();
+  return (
+    <button {...buttonProps} style={compose.style(style)} className={compose.class(className)} />
+  );
+};
+
+const Link = (props: React.ComponentProps<'a'>) => {
+  const { className, style, ...linkProps } = props;
+  const compose = styles.link();
+  return <a {...linkProps} style={compose.style(style)} className={compose.class(className)} />;
+};
+
+const card = css({
+  '--bg-color': 'var(--color_slate-100)',
+  '--border-radius': 'var(--radii_rounded)',
+  '--text-align': 'center',
+  '--overflow': 'hidden',
+  '--m': 10,
+  '--px': 8,
+  '--py': 8,
+  '--md_display': 'flex',
+  '--md_p': 0,
+  '--md_text-align': 'left',
+  '--font-family': 'var(--font_sans)',
+  '--line-height': 'var(---,1.8)',
+});
+
+const styles = css.compose({
+  quoteImage: {
+    '--object-fit': 'cover',
+
+    responsiveVariants: {
+      variant: {
+        circle: {
+          '--width': 24,
+          '--height': 24,
+          '--border-radius': 'var(--radii_circle)',
+        },
+        fill: {
+          '--width': 'var(---,11rem)',
+          '--height': 'var(--size_auto)',
+          '--border-radius': 'var(--radii_none)',
+        },
       },
     },
   },
-  { responsive: true }
-);
+  button: {
+    '--width': 45,
+    '--border-radius': 'var(--radii_rounded)',
+    '--border': 'var(---,none)',
+    '--font-family': 'var(--font_sans)',
+    '--font-size': 'var(---,20px)',
+    '--2xl_font-size': 'var(---, 25px)',
+    '--bg-color': 'var(--color_slate-100)',
+    '--hover_background-color': 'var(--color_slate-700)',
+    '--hover_color': 'var(---,white)',
+    '--transition': 'var(---,all 150ms)',
+    '--hover_animation': 'var(--anim_wiggle)',
+    '--focus-hover_background-color': 'var(--color_sky-500)',
+    '--md_focus-hover_background-color': 'var(--color_slate-700)',
+    '--text-decoration': 'none',
+    '--text-align': 'center',
+    '--color': 'var(---,black)',
+    '--py': 5,
+    '--px': 3,
+  },
+  link: {
+    '--font-family': 'var(--font_sans)',
+    '--color': 'var(--color_sky-500)',
+  },
+});

@@ -248,6 +248,7 @@ function init(modules: { typescript: typeof tslib }) {
       );
 
       if (isTokenValueEntries) {
+        info.project.projectService.logger.info(`TOKENAMI: value`);
         original.entries = original.entries.map((entry) => {
           const entryName = entry.name;
           const property = TokenamiConfig.TokenValue.safeParse(entryName);
@@ -271,6 +272,7 @@ function init(modules: { typescript: typeof tslib }) {
           return entry;
         });
       } else if (isTokenPropertyEntries) {
+        info.project.projectService.logger.info(`TOKENAMI: property`);
         original.entries = original.entries.flatMap((entry) => {
           const property = TokenamiConfig.TokenProperty.safeParse(entry.name);
           // filter any suggestions that aren't tokenami properties (e.g. backgroundColor)
