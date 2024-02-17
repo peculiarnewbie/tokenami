@@ -15,6 +15,7 @@ import { require } from './utils/require';
 
 type Writeable<T> = { -readonly [P in keyof T]: T[P] };
 type GenerateSheetParams = Parameters<typeof sheet.generate>[0];
+type ComposeEntry = GenerateSheetParams['composeEntries'][number];
 
 const questions = [
   {
@@ -86,8 +87,18 @@ const run = () => {
 
       async function regenerateStylesheet(file: string, config: Tokenami.Config) {
         const generateTime = startTimer();
-        const tokens = await findUsedTokens(cwd, config);
-        generateStyles({ tokens, cwd, out: flags.output, config, minify, targets });
+        const { properties, values, composeEntries } = await findUsedTokens(cwd, config);
+
+        generateStyles({
+          tokens: { properties, values },
+          composeEntries,
+          cwd,
+          out: flags.output,
+          config,
+          minify,
+          targets,
+        });
+
         log.debug(`Generated styles from ${file} in ${generateTime()}ms.`);
       }
 
@@ -110,8 +121,18 @@ const run = () => {
         });
       }
 
-      const tokens = await findUsedTokens(cwd, config);
-      generateStyles({ tokens, cwd, out: flags.output, config, minify, targets });
+      const { properties, values, composeEntries } = await findUsedTokens(cwd, config);
+
+      generateStyles({
+        tokens: { properties, values },
+        composeEntries,
+        cwd,
+        out: flags.output,
+        config,
+        minify,
+        targets,
+      });
+
       log.debug(`Ready in ${startTime()}ms.`);
     });
 
@@ -167,6 +188,7 @@ function watch(cwd: string, include: readonly string[], exclude?: readonly strin
 interface UsedTokens {
   properties: Tokenami.TokenProperty[];
   values: Tokenami.TokenValue[];
+  composeEntries: ComposeEntry[];
 }
 
 async function findUsedTokens(cwd: string, config: Tokenami.Config): Promise<UsedTokens> {
@@ -175,14 +197,18 @@ async function findUsedTokens(cwd: string, config: Tokenami.Config): Promise<Use
   const entries = await glob(include, { cwd, onlyFiles: true, stats: false, ignore: exclude });
   let tokenProperties: Tokenami.TokenProperty[] = [];
   let tokenValues: Tokenami.TokenValue[] = [];
+  let composeEntries: ComposeEntry[] = [];
+
   entries.forEach((entry) => {
     const fileContent = fs.readFileSync(entry, 'utf8');
     const tokens = matchTokens(fileContent, config.theme);
     const responsiveProperties = matchResponsiveComposeVariants(fileContent, config);
     tokenProperties = [...tokenProperties, ...tokens.properties, ...responsiveProperties];
     tokenValues = [...tokenValues, ...tokens.values];
+    composeEntries = [...composeEntries, ...matchComposeEntries(fileContent)];
   });
-  return { properties: tokenProperties, values: tokenValues };
+
+  return { properties: tokenProperties, values: tokenValues, composeEntries };
 }
 
 /* -------------------------------------------------------------------------------------------------
@@ -196,8 +222,9 @@ async function findUsedTokens(cwd: string, config: Tokenami.Config): Promise<Use
 const CSS_VARIABLE_REGEX = /--[\w-]+/g;
 
 function matchTokens(fileContent: string, theme: Tokenami.Config['theme']) {
-  const matches = Array.from(fileContent.match(CSS_VARIABLE_REGEX) || []);
-  const uniqueMatches = utils.unique(matches);
+  const cssVariableMatches = Array.from(fileContent.match(CSS_VARIABLE_REGEX) || []);
+
+  const uniqueMatches = utils.unique(cssVariableMatches);
   const variableMatches = uniqueMatches.filter((match) => match !== Tokenami.gridProperty());
 
   const values = variableMatches.flatMap((match) => {
@@ -216,6 +243,27 @@ function matchTokens(fileContent: string, theme: Tokenami.Config['theme']) {
   });
 
   return { properties, values };
+}
+
+/* -------------------------------------------------------------------------------------------------
+ * matchComposeEntries
+ * -----------------------------------------------------------------------------------------------*/
+
+const COMPOSE_BLOCKS_REGEX = /css\.compose\(\{([\s\S]*?)\}\)/g;
+const COMPOSE_PARTS_REGEX = /([\w_]+)\s*:\s*\{([\s\S]*?)\}/g;
+
+function matchComposeEntries(fileContent: string): ComposeEntry[] {
+  const composeBlockMatches = fileContent.match(COMPOSE_BLOCKS_REGEX);
+  if (!composeBlockMatches) return [];
+  return composeBlockMatches.flatMap((block) => {
+    const parts = block.matchAll(COMPOSE_PARTS_REGEX);
+    return Array.from(parts).flatMap(([_, key, block]) => {
+      if (!key || !block) return [];
+      console.log(block);
+      const styles = eval(`(() => ({${block}}))()`);
+      return [[key, styles] as ComposeEntry];
+    });
+  });
 }
 
 /* -------------------------------------------------------------------------------------------------

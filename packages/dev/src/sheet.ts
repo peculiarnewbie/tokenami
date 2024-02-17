@@ -2,6 +2,7 @@ import * as Tokenami from '@tokenami/config';
 import { stringify } from '@stitches/stringify';
 import * as lightning from 'lightningcss';
 import * as utils from './utils';
+import { TokenamiProperties } from './declarations';
 
 const LAYER = {
   SHORT: 'short',
@@ -25,6 +26,7 @@ type PropertyConfig = ReturnType<typeof Tokenami.getTokenPropertyParts> & {
 
 function generate(params: {
   tokens: { properties: Tokenami.TokenProperty[]; values: Tokenami.TokenValue[] };
+  composeEntries: [string, TokenamiProperties][];
   output: string;
   config: Tokenami.Config;
   minify?: boolean;
@@ -35,6 +37,9 @@ function generate(params: {
   const tokenProperties = params.tokens.properties;
   const tokenValues = params.tokens.values;
   const propertyConfigs = getPropertyConfigs(tokenProperties, params.config);
+  const composeKeys = Array.from(new Map(params.composeEntries).keys());
+  const composeClassNames = composeKeys.map((key) => Tokenami.generateClassName(key));
+  const atomicSelector = String(composeClassNames.concat('[style]'));
 
   const styles = {
     reset: new Set<string>(),
@@ -82,16 +87,16 @@ function generate(params: {
 
         const toggleProperty = Tokenami.tokenProperty(config.variant);
         const toggle = nestedSelectors.reduceRight(
-          (declaration, template) => `${template.replace('&', '[style]')} { ${declaration} }`,
+          (declaration, template) => `${template.replace('&', atomicSelector)} { ${declaration} }`,
           `${toggleProperty}: ;`
         );
 
-        const declaration = `[style] { ${cssProperty}: ${variantValue}; }`;
+        const declaration = `${atomicSelector} { ${cssProperty}: ${variantValue}; }`;
         styles.selectors.add(`@layer tk-selector-${propertyLayer} { ${declaration} }`);
         styles.reset.add(`${toggleProperty}: initial;`);
         styles.selectors.add(toggle);
       } else {
-        const declaration = `[style] { ${cssProperty}: ${propertyValue}; }`;
+        const declaration = `${atomicSelector} { ${cssProperty}: ${propertyValue}; }`;
         styles.atomic.add(`@layer tk-${propertyLayer} { ${declaration} }`);
       }
     });
@@ -100,7 +105,7 @@ function generate(params: {
   const sheet = `
     ${generateKeyframeRules(tokenValues, params.config)}
     :root { ${generateRootStyles(tokenValues, params.config)} }
-    [style] { ${Array.from(styles.reset).join(' ')} }
+    ${atomicSelector} { ${Array.from(styles.reset).join(' ')} }
 
     @layer ${LAYERS.map((layer) => `tk-${layer}`).join(', ')};
     @layer ${LAYERS.map((layer) => `tk-selector-${layer}`).join(', ')};

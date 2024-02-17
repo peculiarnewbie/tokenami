@@ -99,7 +99,7 @@ https://github.com/tokenami/tokenami/assets/175330/123e5386-75af-4dbe-8d0c-1015e
 
 ## Getting started
 
-Tokenami offers a CLI tool for generating static styles, a [~5kb](https://bundlephobia.com/package/@tokenami/css) CSS utility for authoring your styles, and a TypeScript plugin to enhance the developer experience.
+Tokenami offers a CLI tool for generating static styles, a [~3kb](https://bundlephobia.com/package/@tokenami/css) CSS utility for authoring your styles, and a TypeScript plugin to enhance the developer experience.
 
 ### Installation
 

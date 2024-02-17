@@ -1,8 +1,8 @@
 import type { LinksFunction } from '@remix-run/node';
-import styles from '~/../public/tokenami.css';
+import tokenamiStyles from '~/../public/tokenami.css';
 import { css } from '~/css';
 
-export const links: LinksFunction = () => [{ rel: 'stylesheet', href: styles }];
+export const links: LinksFunction = () => [{ rel: 'stylesheet', href: tokenamiStyles }];
 
 export default function Index() {
   const quoteImage = styles.quoteImage({ variant: 'circle', md_variant: 'fill' });

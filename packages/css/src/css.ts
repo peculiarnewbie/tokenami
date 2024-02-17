@@ -1,5 +1,5 @@
-import * as Tokenami from '@tokenami/config';
 import type { TokenamiProperties, TokenamiFinalConfig } from '@tokenami/dev';
+import * as Tokenami from '@tokenami/config';
 
 const _LONGHANDS = Symbol();
 const _COMPOSE = Symbol();
@@ -8,21 +8,26 @@ const _COMPOSE = Symbol();
  * css
  * -----------------------------------------------------------------------------------------------*/
 
+// TODO: override this in `tokenami.env.d.ts` for each fw
+interface CSSProperties {}
+
 type VariantsConfig = Record<string, Record<string, TokenamiProperties>>;
 type VariantValue<T> = T extends 'true' | 'false' ? boolean : T;
 type ReponsiveKey = Extract<keyof TokenamiFinalConfig['responsive'], string>;
 type ResponsiveValue<T> = T extends string ? `${ReponsiveKey}_${T}` : never;
 
 type TokenamiStyle = TokenamiProperties & { [_COMPOSE]?: TokenamiProperties };
-type Override = TokenamiStyle | false | undefined;
+type ComposeClass = string | false | undefined;
+type StyleOverride = TokenamiStyle | CSSProperties | false | undefined;
 type Variants<C> = { [V in keyof C]?: VariantValue<keyof C[V]> };
 type ResponsiveVariants<C> = {
   [V in keyof C]: { [M in ResponsiveValue<V>]?: VariantValue<keyof C[V]> };
 }[keyof C];
 
-type SelectedVariants<V, R> =
-  | null
-  | (undefined extends V ? null : Variants<V> & (R extends true ? ResponsiveVariants<V> : {}));
+type ComposeCSS<V, R> = TokenamiProperties & {
+  variants?: V & VariantsConfig;
+  responsiveVariants?: R & VariantsConfig;
+};
 
 interface CSS {
   [_LONGHANDS]?: typeof Tokenami.mapShorthandToLonghands;
@@ -32,13 +37,20 @@ interface CSS {
   // in frameworks like SolidJS that use `CSS.PropertiesHyphen` as style attr type. i'm unsure
   // what usecases requires an accurate return type here, so open to investigating further if we
   // discover usecases later.
-  (baseStyles: TokenamiProperties, ...overrides: Override[]): {};
+  (baseStyles: TokenamiStyle, ...overrides: StyleOverride[]): {};
 
-  compose: <V extends VariantsConfig | undefined, R>(
-    baseStyles: TokenamiProperties,
-    variantsConfig?: V & VariantsConfig,
-    options?: undefined extends V ? never : { responsive: R & boolean }
-  ) => (variants?: SelectedVariants<V, R>, ...overrides: Override[]) => {};
+  compose: <
+    C extends string,
+    V extends VariantsConfig | undefined,
+    R extends VariantsConfig | undefined
+  >(config: { [ClassName in C]: ComposeCSS<V, R> }) => {
+    [ClassName in C]: (
+      variants?: undefined extends R ? Variants<V> : Variants<R> & ResponsiveVariants<R>
+    ) => {
+      class: (...classNames: ComposeClass[]) => string;
+      style: (...overrides: StyleOverride[]) => {};
+    };
+  };
 }
 
 const cache: Record<string, TokenamiProperties> = {};
@@ -54,10 +66,17 @@ const css: CSS = (baseStyles, ...overrides) => {
 
   overrides.forEach((overrideStyle) => {
     if (!overrideStyle) return;
-    for (let key in overrideStyle) {
+    const originalStyles = baseStyles[_COMPOSE] || baseStyles;
+    const styles = (overrideStyle as any)[_COMPOSE] || overrideStyle;
+
+    for (let key in styles) {
       const tokenProperty = key as keyof TokenamiProperties;
       const property = Tokenami.getTokenPropertyName(tokenProperty);
-      override(overriddenStyles, property);
+      if (originalStyles[tokenProperty] === styles[tokenProperty]) {
+        delete styles[tokenProperty];
+      } else {
+        override(overriddenStyles, property);
+      }
     }
     // this must happen each iteration so that each override applies to the
     // mutated css object from the previous override iteration
@@ -82,28 +101,45 @@ css[_LONGHANDS] = Tokenami.mapShorthandToLonghands;
  * compose
  * -----------------------------------------------------------------------------------------------*/
 
-css.compose = (baseStyles, variantsConfig, options) => {
-  return function generate(variants, ...overrides) {
-    const cacheId = JSON.stringify({ baseStyles, variants, overrides });
-    const cached = cache[cacheId];
+css.compose = (styles) => {
+  const entries = Object.entries(styles).map(([key, config]) => {
+    const className = Tokenami.generateClassName(key);
+    const { variants, responsiveVariants, ...baseStyles } = config as ComposeCSS<
+      VariantsConfig,
+      VariantsConfig
+    >;
 
-    if (cached) return cached;
+    const compose: ReturnType<typeof css.compose>[string] = (selectedVariants) => ({
+      class: (...classNames) => classNames.concat(className).filter(Boolean).join(' '),
+      style: (...overrides) => {
+        const cacheId = JSON.stringify({ baseStyles, selectedVariants, overrides });
+        const cached = cache[cacheId];
 
-    const variantStyles: TokenamiProperties[] = variants
-      ? Object.entries(variants).flatMap(([key, variant]) => {
-          if (!variant) return [];
-          const [type, bp] = key.split('_').reverse() as [keyof VariantsConfig, string?];
-          const styles = variantsConfig?.[type]?.[variant as any];
-          const responsive = options?.responsive;
-          const updated = responsive && bp && styles ? convertToMediaStyles(bp, styles) : styles;
-          return updated ? [updated] : [];
-        })
-      : [];
+        if (cached) return cached;
 
-    const styles = css(baseStyles, ...variantStyles, ...overrides);
-    cache[cacheId] = styles;
-    return styles;
-  };
+        const variantStyles: TokenamiProperties[] = selectedVariants
+          ? Object.entries(selectedVariants).flatMap(([key, variant]) => {
+              if (!variant) return [];
+              const [type, bp] = key.split('_').reverse() as [keyof VariantsConfig, string?];
+              if (bp) {
+                const styles = responsiveVariants?.[type]?.[variant as any];
+                return styles ? [convertToMediaStyles(bp, styles)] : [];
+              } else {
+                const styles = variants?.[type]?.[variant as any];
+                return styles ? [styles] : [];
+              }
+            })
+          : [];
+
+        const styles = css({ [_COMPOSE]: baseStyles }, ...variantStyles, ...overrides);
+        cache[cacheId] = styles;
+        return styles;
+      },
+    });
+
+    return [key, compose];
+  });
+  return Object.fromEntries(entries);
 };
 
 css[_LONGHANDS] = Tokenami.mapShorthandToLonghands;
