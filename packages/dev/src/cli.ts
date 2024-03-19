@@ -74,12 +74,14 @@ const run = () => {
     .option('-o, --output [path]', 'Output file', { default: 'public/tokenami.css' })
     .option('-w, --watch', 'Watch for changes and rebuild as needed')
     .option('--minify', 'Minify CSS output')
+    .option('-e, --extra [...paths]', 'path to other css files')
     .action(async (_, flags) => {
       const startTime = startTimer();
       const configPath = utils.getConfigPath(cwd, flags.config);
       const projectPkgJson = require(pathe.join(cwd, 'package.json'));
       const targets = browserslistToTargets(getBrowsersList(projectPkgJson.browserslist));
       const minify = flags.minify;
+      const extras = flags.extra;
       let config: Writeable<Tokenami.Config> = utils.getConfigAtPath(configPath);
 
       config.include = flags.files || config.include;
@@ -88,7 +90,8 @@ const run = () => {
       async function regenerateStylesheet(file: string, config: Tokenami.Config) {
         const generateTime = startTimer();
         const tokens = await findUsedTokens(cwd, config);
-        generateStyles({ tokens, cwd, out: flags.output, config, minify, targets });
+        const extraStyles = await readExtraStyles(extras);
+        generateStyles({ tokens, cwd, out: flags.output, config, minify, targets, extraStyles });
         log.debug(`Generated styles from ${file} in ${generateTime()}ms.`);
       }
 
@@ -112,7 +115,8 @@ const run = () => {
       }
 
       const tokens = await findUsedTokens(cwd, config);
-      generateStyles({ tokens, cwd, out: flags.output, config, minify, targets });
+      const extraStyles = await readExtraStyles(extras);
+      generateStyles({ tokens, cwd, out: flags.output, config, minify, targets, extraStyles });
       log.debug(`Ready in ${startTime()}ms.`);
     });
 
@@ -270,6 +274,23 @@ function startTimer() {
     const stop = performance.now();
     return Math.round(stop - start);
   };
+}
+
+/* -------------------------------------------------------------------------------------------------
+ * readExtraStyles
+ * -----------------------------------------------------------------------------------------------*/
+
+async function readExtraStyles(paths: string[] | string | undefined) {
+  if (paths === undefined) return undefined;
+
+  if (typeof paths === 'string') return fs.readFileSync(paths, 'utf-8');
+
+  let content = '';
+  paths.forEach((entry) => {
+    const fileContent = fs.readFileSync(entry, 'utf8');
+    content += fileContent;
+  });
+  return content;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
