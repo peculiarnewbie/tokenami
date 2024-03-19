@@ -83,7 +83,8 @@ function generate(params: {
   const sheet = `
     @layer tokenami {
       ${generateKeyframeRules(tokenValues, params.config)}
-      :root { ${generateRootStyles(tokenValues, params.config)} }
+      ${params.config.rootReplacement ?? ':root'} 
+      { ${generateRootStyles(tokenValues, params.config)} }
       [style] { ${Array.from(styles.reset).join(' ')} }
 
       @layer ${Tokenami.layers.map((_, layer) => `tk-${layer}`).join(', ')};

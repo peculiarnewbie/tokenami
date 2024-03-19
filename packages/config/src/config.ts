@@ -35,6 +35,7 @@ interface Config
     aliases?: Aliases;
     theme: Theme;
     properties?: Partial<Record<Supports.CSSProperty, PropertiesOptions>>;
+    rootReplacement?: string;
   }> {}
 
 const defaultConfig = {
