@@ -21,6 +21,7 @@ function generate(params: {
   config: Tokenami.Config;
   minify?: boolean;
   targets?: lightning.Targets;
+  extraStyles?: string;
 }) {
   if (!params.tokens.properties.length) return '';
 
@@ -96,6 +97,7 @@ function generate(params: {
         .flatMap((set) => Array.from(set))
         .join(' ')}
     }
+    ${params.extraStyles ?? ''}
   `;
 
   const transformed = lightning.transform({
